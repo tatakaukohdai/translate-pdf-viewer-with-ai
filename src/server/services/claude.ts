@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 
 export const PROMPT_VERSION = 'v1';
 
@@ -11,11 +11,7 @@ interface TranslateParams {
 
 export interface TranslateResult {
   translation: string;
-  inputTokens: number;
-  outputTokens: number;
 }
-
-const client = new Anthropic();
 
 function buildPrompt(params: TranslateParams): string {
   const { pageText, contextBefore, contextAfter, pageNum } = params;
@@ -50,21 +46,21 @@ ${afterSection}
 
 export async function translatePage(params: TranslateParams): Promise<TranslateResult> {
   const prompt = buildPrompt(params);
+  let translation = '';
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 4096,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  const content = response.content[0];
-  if (content.type !== 'text') {
-    throw new Error('Unexpected response type from Claude API');
+  for await (const message of query({ prompt })) {
+    if (message.type === 'result') {
+      if (message.subtype === 'success') {
+        translation = message.result;
+      } else {
+        throw new Error(`Translation failed: ${message.subtype}`);
+      }
+    }
   }
 
-  return {
-    translation: content.text,
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
-  };
+  if (!translation) {
+    throw new Error('No translation received from Agent SDK');
+  }
+
+  return { translation };
 }

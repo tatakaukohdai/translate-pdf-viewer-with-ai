@@ -91,7 +91,7 @@ translate-pdf-viewer-with-ai/
 | **Node.js + Express** | TypeScript で Mac / Windows 両対応。プラットフォーム別バイナリビルドが不要で、管理者権限なしで社用PCに展開できる |
 | **pdf.js** | ブラウザネイティブで動作。サーバーへのPDFバイナリ送信不要。テキストアイテムの座標情報（ノイズ除去に使用）も取得できる |
 | **better-sqlite3** | 同期API。ローカル単一ユーザー用途でロック・並行性の心配がなく、コードが単純になる |
-| **Anthropic Messages API 直叩き** | 翻訳はステートレスな単発推論のためAgent SDKは不要。プロンプト→テキスト応答の最も素直な経路 |
+| **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`) | ProプランのAgent SDKクレジット（月$20）を活用。`CLAUDE_CODE_OAUTH_TOKEN` で認証するため別途APIキー不要 |
 | **Vite** | TypeScript フロントエンドのビルドと開発HMRを簡潔に提供。pdf.js workerのURL解決も自動 |
 | **marked** | 軽量で依存なし。翻訳テキストのMarkdownをHTML変換するのに十分 |
 
@@ -159,7 +159,8 @@ pdf.js の `getTextContent()` が返す各テキストアイテムには `transf
 
 - Node.js 18 以上
 - `npm`
-- Anthropic APIキー（[console.anthropic.com](https://console.anthropic.com) で取得）
+- Claude Code CLI インストール済み（`npm install -g @anthropic-ai/claude-code`）
+- Claude Pro / Max / Team / Enterprise サブスクリプション
 
 ### インストールと起動
 
@@ -168,24 +169,28 @@ pdf.js の `getTextContent()` が返す各テキストアイテムには `transf
 git clone <repository-url>
 cd translate-pdf-viewer-with-ai
 
-# 2. 環境変数の設定
-cp .env.example .env
-# .env を編集して ANTHROPIC_API_KEY を設定
+# 2. OAuth トークンを生成（初回のみ・1年間有効）
+claude setup-token
+# → 表示されたトークンをコピー
 
-# 3. 依存パッケージをインストール
+# 3. 環境変数の設定
+cp .env.example .env
+# .env を編集して CLAUDE_CODE_OAUTH_TOKEN にトークンをペースト
+
+# 4. 依存パッケージをインストール
 npm install
 
-# 4a. 開発モードで起動（HMR 有効）
+# 5a. 開発モードで起動（HMR 有効）
 npm run dev
 # → http://localhost:5173 を開く
 
-# 4b. 本番ビルドして起動
+# 5b. 本番ビルドして起動
 npm run build
 npm start
 # → http://localhost:3000 を開く
 ```
 
-**Windows の場合**: `start.bat` をダブルクリックで本番起動（ステップ 2 の `.env` 設定は事前に必要）。
+**Windows の場合**: `start.bat` をダブルクリックで本番起動（ステップ 3 の `.env` 設定は事前に必要）。
 
 ---
 
