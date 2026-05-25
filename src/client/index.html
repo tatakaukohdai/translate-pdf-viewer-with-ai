@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>技術書翻訳ビューワー</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="toolbar">
+      <label for="pdf-input">PDF を開く:</label>
+      <input type="file" id="pdf-input" accept=".pdf" />
+
+      <div id="page-controls">
+        <button id="btn-prev" disabled title="前のページ (←)">‹</button>
+        <span id="page-display">-/-</span>
+        <button id="btn-next" disabled title="次のページ (→)">›</button>
+      </div>
+
+      <button id="btn-translate" title="選択中のページを翻訳 (T)">翻訳</button>
+      <button id="btn-export" disabled title="全翻訳をMarkdownで保存">ノートを保存</button>
+      <span id="cache-badge"></span>
+    </header>
+
+    <main id="panes">
+      <section id="pdf-pane">
+        <canvas id="pdf-canvas"></canvas>
+      </section>
+
+      <section id="translation-pane">
+        <div id="translation-loading" hidden>翻訳中...</div>
+        <div id="translation-content">
+          <p class="empty-hint">PDFを開いて翻訳ボタンを押してください</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

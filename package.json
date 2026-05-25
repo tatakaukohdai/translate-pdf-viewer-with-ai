@@ -1,0 +1,28 @@
+{
+  "name": "translate-pdf-viewer-with-ai",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"tsx watch src/server/index.ts\"",
+    "build": "tsc -p tsconfig.server.json && vite build",
+    "start": "NODE_ENV=production node dist/server/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "better-sqlite3": "^9.6.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "marked": "^12.0.0",
+    "pdfjs-dist": "^4.4.168"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.10",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "concurrently": "^8.2.2",
+    "tsx": "^4.15.0",
+    "typescript": "^5.5.0",
+    "vite": "^5.3.0"
+  }
+}
