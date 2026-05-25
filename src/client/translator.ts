@@ -46,6 +46,21 @@ export function renderMarkdown(markdown: string): string {
   return marked.parse(markdown) as string;
 }
 
+export interface CacheCheckResponse {
+  hit: boolean;
+  translation?: string;
+  pageNum?: number;
+}
+
+export async function checkCachedTranslation(
+  pdfHash: string,
+  pageNum: number
+): Promise<CacheCheckResponse> {
+  const response = await fetch(`/api/translate/${pdfHash}/${pageNum}`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
 export async function exportNotes(pdfHash: string): Promise<void> {
   const response = await fetch(`/api/notes/export/${pdfHash}`);
   if (!response.ok) {

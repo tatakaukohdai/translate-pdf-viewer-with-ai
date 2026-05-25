@@ -17,6 +17,25 @@ function isValidPdfHash(hash: unknown): hash is string {
   return typeof hash === 'string' && /^[0-9a-f]{64}$/.test(hash);
 }
 
+translateRouter.get('/:pdfHash/:pageNum', (req: Request, res: Response) => {
+  const { pdfHash, pageNum: pageNumStr } = req.params;
+  if (!isValidPdfHash(pdfHash)) {
+    res.status(400).json({ error: 'Invalid pdfHash' });
+    return;
+  }
+  const pageNum = parseInt(pageNumStr, 10);
+  if (!Number.isInteger(pageNum) || pageNum < 1) {
+    res.status(400).json({ error: 'Invalid pageNum' });
+    return;
+  }
+  const cached = getCachedTranslation(pdfHash, pageNum, PROMPT_VERSION);
+  if (cached) {
+    res.json({ hit: true, translation: cached.translation, pageNum });
+  } else {
+    res.json({ hit: false });
+  }
+});
+
 translateRouter.post('/', async (req: Request, res: Response) => {
   const body = req.body as Partial<TranslateRequestBody>;
 

@@ -1,6 +1,6 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { computePdfHash, loadPdf, renderPageToCanvas, getPageTextWithContext } from './pdfViewer';
-import { requestTranslation, renderMarkdown, exportNotes } from './translator';
+import { requestTranslation, renderMarkdown, exportNotes, checkCachedTranslation } from './translator';
 
 let pdfDoc: PDFDocumentProxy | null = null;
 let pdfHash = '';
@@ -79,6 +79,22 @@ async function goToPage(page: number): Promise<void> {
   updatePageDisplay();
   clearCacheBadge();
   await renderPageToCanvas(pdfDoc, page, pdfCanvas, pdfPane.clientWidth);
+  if (pdfHash) await loadCachedTranslation();
+}
+
+async function loadCachedTranslation(): Promise<void> {
+  try {
+    const result = await checkCachedTranslation(pdfHash, currentPage);
+    if (result.hit && result.translation) {
+      translationContent.innerHTML = renderMarkdown(result.translation); // content is from Claude API, same as translateCurrentPage
+      setCacheBadge(true);
+      translationContent.scrollTop = 0;
+    } else {
+      clearTranslation();
+    }
+  } catch {
+    clearTranslation();
+  }
 }
 
 async function translateCurrentPage(): Promise<void> {
