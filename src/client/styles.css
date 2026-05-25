@@ -4,6 +4,8 @@
   padding: 0;
 }
 
+[hidden] { display: none !important; }
+
 :root {
   --bg-toolbar: #1e1e2e;
   --text-toolbar: #cdd6f4;
