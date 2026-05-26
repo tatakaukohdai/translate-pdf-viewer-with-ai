@@ -26,6 +26,9 @@ export function initBookshelf(
   btnAddBook.addEventListener('click', () => handleAddBook());
   btnClose.addEventListener('click', () => closeBookshelf());
   overlay.addEventListener('click', () => closeBookshelf());
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeBookshelf();
+  });
 }
 
 export function openBookshelf(): void {
@@ -85,6 +88,8 @@ async function createBookCard(book: BookRecord): Promise<HTMLElement> {
   const thumbnail = await getThumbnail(book.pdf_hash);
   if (thumbnail) {
     const img = document.createElement('img');
+    img.onload = () => URL.revokeObjectURL(img.src);
+    img.onerror = () => URL.revokeObjectURL(img.src);
     img.src = URL.createObjectURL(thumbnail);
     img.alt = book.title;
     thumbDiv.appendChild(img);
@@ -141,7 +146,8 @@ async function handleCardClick(
       const permission = await fileHandle.requestPermission({ mode: 'read' });
       if (permission === 'granted') {
         const file = await fileHandle.getFile();
-        await onOpenCallback!(book.pdf_hash, file);
+        if (!onOpenCallback) return;
+        await onOpenCallback(book.pdf_hash, file);
         closeBookshelf();
         return;
       }
@@ -173,7 +179,8 @@ async function handleReRegistration(book: BookRecord): Promise<void> {
     }
 
     await saveFileHandle(book.pdf_hash, handle);
-    await onOpenCallback!(book.pdf_hash, file);
+    if (!onOpenCallback) return;
+    await onOpenCallback(book.pdf_hash, file);
     closeBookshelf();
   } catch (err: any) {
     if (err?.name !== 'AbortError') {
@@ -199,13 +206,12 @@ async function handleAddBook(): Promise<void> {
     // Render thumbnail from page 1
     const offscreen = document.createElement('canvas');
     await renderPageToCanvas(pdfDoc, 1, offscreen, 300);
-    offscreen.toBlob(
-      (blob) => {
-        if (blob) saveThumbnail(hash, blob);
-      },
-      'image/jpeg',
-      0.8
-    );
+    await new Promise<void>((resolve) => {
+      offscreen.toBlob((blob) => {
+        if (blob) saveThumbnail(hash, blob).then(resolve, resolve);
+        else resolve();
+      }, 'image/jpeg', 0.8);
+    });
 
     // Save file handle locally
     await saveFileHandle(hash, handle);
