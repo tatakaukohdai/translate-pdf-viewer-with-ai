@@ -1,9 +1,10 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { computePdfHash, loadPdf, renderPageToCanvas, getPageTextWithContext } from './pdfViewer';
 import { requestTranslation, renderMarkdown, exportNotes, checkCachedTranslation } from './translator';
+import { initBookshelf } from './bookshelf';
 
 let pdfDoc: PDFDocumentProxy | null = null;
-let pdfHash = '';
+let currentPdfHash = '';
 let currentPage = 1;
 let totalPages = 0;
 let isTranslating = false;
@@ -26,7 +27,7 @@ pdfInput.addEventListener('change', async (e) => {
 
   try {
     const buffer = await file.arrayBuffer();
-    pdfHash = await computePdfHash(buffer);
+    currentPdfHash = await computePdfHash(buffer);
     pdfDoc = await loadPdf(buffer);
     totalPages = pdfDoc.numPages;
     currentPage = 1;
@@ -51,10 +52,10 @@ btnTranslate.addEventListener('click', () => {
 });
 
 btnExport.addEventListener('click', async () => {
-  if (!pdfHash) return;
+  if (!currentPdfHash) return;
   try {
     btnExport.disabled = true;
-    await exportNotes(pdfHash);
+    await exportNotes(currentPdfHash);
   } catch (err) {
     showError(err instanceof Error ? err.message : 'エクスポートに失敗しました');
   } finally {
@@ -73,18 +74,50 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
+  let timer: ReturnType<typeof setTimeout>;
+  return ((...args: any[]) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  }) as T;
+}
+
+const updateLastReadPage = debounce((hash: string, page: number) => {
+  fetch(`/api/books/${hash}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lastReadPage: page }),
+  }).catch(() => {}); // fire-and-forget, non-critical
+}, 500);
+
+async function openFromBookshelf(pdfHash: string, file: File): Promise<void> {
+  try {
+    const buffer = await file.arrayBuffer();
+    currentPdfHash = pdfHash;
+    pdfDoc = await loadPdf(buffer);
+    totalPages = pdfDoc.numPages;
+    currentPage = 1;
+    btnExport.disabled = false;
+    clearTranslation();
+    await goToPage(1);
+  } catch (err) {
+    showError(err instanceof Error ? err.message : 'PDFの読み込みに失敗しました');
+  }
+}
+
 async function goToPage(page: number): Promise<void> {
   if (!pdfDoc) return;
   currentPage = page;
   updatePageDisplay();
   clearCacheBadge();
   await renderPageToCanvas(pdfDoc, page, pdfCanvas, pdfPane.clientWidth);
-  if (pdfHash) await loadCachedTranslation();
+  if (currentPdfHash) updateLastReadPage(currentPdfHash, page);
+  if (currentPdfHash) await loadCachedTranslation();
 }
 
 async function loadCachedTranslation(): Promise<void> {
   try {
-    const result = await checkCachedTranslation(pdfHash, currentPage);
+    const result = await checkCachedTranslation(currentPdfHash, currentPage);
     if (result.hit && result.translation) {
       translationContent.innerHTML = renderMarkdown(result.translation); // content is from Claude API, same as translateCurrentPage
       setCacheBadge(true);
@@ -112,7 +145,7 @@ async function translateCurrentPage(): Promise<void> {
       return;
     }
 
-    const result = await requestTranslation(pdfHash, currentPage, textResult);
+    const result = await requestTranslation(currentPdfHash, currentPage, textResult);
     translationContent.innerHTML = renderMarkdown(result.translation);
     setCacheBadge(result.fromCache);
     translationContent.scrollTop = 0;
@@ -160,3 +193,4 @@ function showError(msg: string): void {
 }
 
 updatePageDisplay();
+initBookshelf(openFromBookshelf);
