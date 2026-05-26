@@ -28,11 +28,16 @@ translateRouter.get('/:pdfHash/:pageNum', async (req: Request, res: Response) =>
     res.status(400).json({ error: 'Invalid pageNum' });
     return;
   }
-  const cached = await getCachedTranslation(pdfHash, pageNum, PROMPT_VERSION);
-  if (cached) {
-    res.json({ hit: true, translation: cached.translation, pageNum });
-  } else {
-    res.json({ hit: false });
+  try {
+    const cached = await getCachedTranslation(pdfHash, pageNum, PROMPT_VERSION);
+    if (cached) {
+      res.json({ hit: true, translation: cached.translation, pageNum });
+    } else {
+      res.json({ hit: false });
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: 'Database error', detail: message });
   }
 });
 
@@ -54,9 +59,15 @@ translateRouter.post('/', async (req: Request, res: Response) => {
 
   const { pdfHash, pageNum, pageText, contextBefore = '', contextAfter = '' } = body as TranslateRequestBody;
 
-  const cached = await getCachedTranslation(pdfHash, pageNum, PROMPT_VERSION);
-  if (cached) {
-    res.json({ translation: cached.translation, fromCache: true, pageNum });
+  try {
+    const cached = await getCachedTranslation(pdfHash, pageNum, PROMPT_VERSION);
+    if (cached) {
+      res.json({ translation: cached.translation, fromCache: true, pageNum });
+      return;
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: 'Database error', detail: message });
     return;
   }
 
