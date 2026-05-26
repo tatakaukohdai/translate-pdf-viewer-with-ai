@@ -4,7 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { translateRouter } from './routes/translate';
 import { notesRouter } from './routes/notes';
-import { getDb } from './db';
+import { initDb } from './db';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -27,11 +27,13 @@ if (IS_PROD) {
   });
 }
 
-getDb();
+(async () => {
+  await initDb();
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-  if (!IS_PROD) {
-    console.log('Development mode: frontend served by Vite at http://localhost:5173');
-  }
-});
+  app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+    if (!IS_PROD) {
+      console.log('Development mode: frontend served by Vite at http://localhost:5173');
+    }
+  });
+})();

@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { createClient, Client } from '@libsql/client';
 import path from 'path';
 import fs from 'fs';
 
@@ -15,19 +15,36 @@ export interface CachedTranslation {
   created_at: number;
 }
 
-let _db: Database.Database | null = null;
+let _client: Client | null = null;
 
-export function getDb(): Database.Database {
-  if (_db) return _db;
+export function getDb(): Client {
+  if (_client) return _client;
 
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  const tursoToken = process.env.TURSO_AUTH_TOKEN;
+
+  let url: string;
+  let authToken: string | undefined;
+
+  if (tursoUrl && tursoToken) {
+    url = tursoUrl;
+    authToken = tursoToken;
+  } else {
+    // Local file mode — ensure data directory exists
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    url = `file:${DB_PATH}`;
+    authToken = undefined;
   }
 
-  _db = new Database(DB_PATH);
-  _db.pragma('journal_mode = WAL');
+  _client = createClient({ url, authToken });
+  return _client;
+}
 
-  _db.exec(`
+export async function initDb(): Promise<void> {
+  const client = getDb();
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS translations (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       pdf_hash    TEXT    NOT NULL,
@@ -37,47 +54,65 @@ export function getDb(): Database.Database {
       translation TEXT    NOT NULL,
       created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
       UNIQUE(pdf_hash, page_num, prompt_ver)
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_translations_hash
-      ON translations(pdf_hash, page_num);
+    )
   `);
-
-  return _db;
+  await client.execute(`
+    CREATE INDEX IF NOT EXISTS idx_translations_hash
+      ON translations(pdf_hash, page_num)
+  `);
 }
 
-export function getCachedTranslation(
+export async function getCachedTranslation(
   pdfHash: string,
   pageNum: number,
   promptVer: string
-): CachedTranslation | undefined {
-  const db = getDb();
-  return db
-    .prepare(
-      'SELECT * FROM translations WHERE pdf_hash = ? AND page_num = ? AND prompt_ver = ?'
-    )
-    .get(pdfHash, pageNum, promptVer) as CachedTranslation | undefined;
+): Promise<CachedTranslation | undefined> {
+  const client = getDb();
+  const result = await client.execute({
+    sql: 'SELECT * FROM translations WHERE pdf_hash = ? AND page_num = ? AND prompt_ver = ?',
+    args: [pdfHash, pageNum, promptVer],
+  });
+  if (result.rows.length === 0) return undefined;
+  const row = result.rows[0];
+  return {
+    id: row['id'] as number,
+    pdf_hash: row['pdf_hash'] as string,
+    page_num: row['page_num'] as number,
+    prompt_ver: row['prompt_ver'] as string,
+    source_text: row['source_text'] as string,
+    translation: row['translation'] as string,
+    created_at: row['created_at'] as number,
+  };
 }
 
-export function saveTranslation(
+export async function saveTranslation(
   pdfHash: string,
   pageNum: number,
   promptVer: string,
   sourceText: string,
   translation: string
-): void {
-  const db = getDb();
-  db.prepare(
-    `INSERT OR REPLACE INTO translations (pdf_hash, page_num, prompt_ver, source_text, translation)
-     VALUES (?, ?, ?, ?, ?)`
-  ).run(pdfHash, pageNum, promptVer, sourceText, translation);
+): Promise<void> {
+  const client = getDb();
+  await client.execute({
+    sql: `INSERT OR REPLACE INTO translations (pdf_hash, page_num, prompt_ver, source_text, translation)
+          VALUES (?, ?, ?, ?, ?)`,
+    args: [pdfHash, pageNum, promptVer, sourceText, translation],
+  });
 }
 
-export function getAllTranslationsForPdf(pdfHash: string): CachedTranslation[] {
-  const db = getDb();
-  return db
-    .prepare(
-      'SELECT * FROM translations WHERE pdf_hash = ? ORDER BY page_num ASC'
-    )
-    .all(pdfHash) as CachedTranslation[];
+export async function getAllTranslationsForPdf(pdfHash: string): Promise<CachedTranslation[]> {
+  const client = getDb();
+  const result = await client.execute({
+    sql: 'SELECT * FROM translations WHERE pdf_hash = ? ORDER BY page_num ASC',
+    args: [pdfHash],
+  });
+  return result.rows.map((row) => ({
+    id: row['id'] as number,
+    pdf_hash: row['pdf_hash'] as string,
+    page_num: row['page_num'] as number,
+    prompt_ver: row['prompt_ver'] as string,
+    source_text: row['source_text'] as string,
+    translation: row['translation'] as string,
+    created_at: row['created_at'] as number,
+  }));
 }
