@@ -90,7 +90,7 @@ const updateLastReadPage = debounce((hash: string, page: number) => {
   }).catch(() => {}); // fire-and-forget, non-critical
 }, 500);
 
-async function openFromBookshelf(pdfHash: string, file: File): Promise<void> {
+async function openFromBookshelf(_pdfHash: string, file: File): Promise<void> {
   isTranslating = false;
   setLoadingState(false);
   try {
