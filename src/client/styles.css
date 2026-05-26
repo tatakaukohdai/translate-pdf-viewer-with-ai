@@ -236,3 +236,129 @@ button:disabled {
   text-align: center;
   padding-top: 40px;
 }
+
+/* Bookshelf modal */
+#bookshelf-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#bookshelf-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+#bookshelf-panel {
+  position: relative;
+  background: #1e1e2e;
+  border: 1px solid #45475a;
+  border-radius: 8px;
+  width: min(860px, 95vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#bookshelf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid #45475a;
+  color: #cdd6f4;
+  font-size: 1rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+#bookshelf-actions {
+  display: flex;
+  gap: 8px;
+}
+
+#bookshelf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  padding: 20px;
+  overflow-y: auto;
+  min-height: 200px;
+}
+
+.book-card {
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.1s;
+}
+
+.book-card:hover {
+  border-color: #89b4fa;
+  transform: translateY(-2px);
+}
+
+.book-card-thumb {
+  width: 100%;
+  aspect-ratio: 3/4;
+  background: #45475a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.book-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.book-card-thumb-placeholder {
+  font-size: 2.5rem;
+  color: #585b70;
+}
+
+.book-card-info {
+  padding: 8px 10px;
+}
+
+.book-card-title {
+  font-size: 0.75rem;
+  color: #cdd6f4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.book-card-progress {
+  font-size: 0.7rem;
+  color: #6c7086;
+}
+
+.book-card-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(243, 139, 168, 0.2);
+  color: #f38ba8;
+  border: 1px solid #f38ba8;
+  margin-top: 2px;
+}
+
+#bookshelf-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #6c7086;
+  font-size: 0.9rem;
+  padding: 40px 0;
+}
