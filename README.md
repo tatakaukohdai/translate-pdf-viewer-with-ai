@@ -1,10 +1,12 @@
-# 技術書翻訳ビューワー
+# PDF翻訳ビューワー
 
-英語の技術書PDFを開いて、ページ単位でAI日本語訳を並べて読めるローカルWebアプリ。
+英語のPDFドキュメントを開いて、ページ単位でAI日本語訳を並べて読めるローカルWebアプリ。
 
 - PDFを左ペインに表示、翻訳を右ペインに表示
 - 翻訳結果はSQLiteにキャッシュ（同じページは2回目以降即時表示）
 - 全翻訳をMarkdownファイルとして保存できる
+- PDFを本棚に登録して一覧管理（サムネイル付き）
+- 翻訳キャッシュをTurso経由で複数端末同期可能
 
 ## 前提条件
 
@@ -72,16 +74,55 @@ Mac / Linux は `./start.sh` を実行するとインストール・ビルド・
 
 ## .env の内容
 
-```
-CLAUDE_CODE_OAUTH_TOKEN=（claude setup-token で生成したトークン）
-PORT=3000  # 省略可（デフォルト3000）
-```
+| 変数名 | 必須 | 説明 |
+|--------|------|------|
+| `CLAUDE_CODE_OAUTH_TOKEN` | ✅ | claude setup-token で生成したトークン |
+| `PORT` | — | サーバーポート（デフォルト: 3000） |
+| `TURSO_DATABASE_URL` | — | Turso DB の URL（例: `libsql://your-db.turso.io`）。省略するとローカルの `data/cache.db` を使用 |
+| `TURSO_AUTH_TOKEN` | — | Turso の認証トークン。`TURSO_DATABASE_URL` と一緒に設定する |
 
 ## 翻訳キャッシュについて
 
 翻訳結果は `data/cache.db`（SQLite）に保存される。同じPDFの同じページは2回目以降APIを呼ばない。
 
 キャッシュをリセットしたい場合は `data/cache.db` を削除する。
+
+## 本棚機能
+
+ツールバーの「本棚」ボタンからPDFを登録・管理できる。
+
+- 「＋ 追加」でPDFファイルを選択して本棚に登録（ファイルはコピーされず参照のみ）
+- カードをクリックして開く。ファイルが見つからない場合は「再登録」を求める（翻訳キャッシュは引き継がれる）
+- サムネイル（表紙）はブラウザのIndexedDBに保存される
+
+## 複数端末での翻訳キャッシュ共有（Turso）
+
+Tursoを使うと、翻訳キャッシュと本棚情報を複数端末で共有できる。
+
+### セットアップ手順
+
+1. [Turso](https://turso.tech) でアカウントを作成（無料プランあり）
+2. CLIをインストール: `brew install tursodatabase/tap/turso`（Mac）
+3. ログイン: `turso auth login`
+4. DBを作成: `turso db create pdf-viewer`
+5. URLとトークンを取得:
+   ```bash
+   turso db show pdf-viewer --url  # → TURSO_DATABASE_URL
+   turso db tokens create pdf-viewer  # → TURSO_AUTH_TOKEN
+   ```
+6. `.env` に追記:
+   ```
+   TURSO_DATABASE_URL=libsql://pdf-viewer-<username>.turso.io
+   TURSO_AUTH_TOKEN=<token>
+   ```
+
+### ローカルから移行する場合
+
+すでにローカルで翻訳キャッシュが蓄積されている場合、本棚モーダル下部の「**cache.dbをインポート**」ボタンで `data/cache.db` のデータをTursoに移行できる。
+
+### 別端末での利用
+
+別端末の `.env` に同じ `TURSO_DATABASE_URL` と `TURSO_AUTH_TOKEN` を設定するだけで、翻訳キャッシュと本棚が共有される。PDFファイル自体は各端末でそれぞれ本棚に登録する必要がある。
 
 ## 詳細ドキュメント
 
