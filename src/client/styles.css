@@ -362,3 +362,14 @@ button:disabled {
   font-size: 0.9rem;
   padding: 40px 0;
 }
+
+#bookshelf-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #45475a;
+  flex-shrink: 0;
+}
+
+#bookshelf-footer button {
+  font-size: 0.8rem;
+  padding: 4px 10px;
+}

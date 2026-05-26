@@ -9,6 +9,7 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "latest",
     "@libsql/client": "^0.14.0",
+    "better-sqlite3": "^12.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
@@ -16,6 +17,7 @@
     "pdfjs-dist": "^4.4.168"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.0",

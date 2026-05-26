@@ -22,10 +22,13 @@ export function initBookshelf(
   const btnClose = document.getElementById('btn-close-bookshelf')!;
   const overlay = document.getElementById('bookshelf-overlay')!;
 
+  const btnImport = document.getElementById('btn-import-cache')!;
+
   btnBookshelf.addEventListener('click', () => openBookshelf());
   btnAddBook.addEventListener('click', () => handleAddBook());
   btnClose.addEventListener('click', () => closeBookshelf());
   overlay.addEventListener('click', () => closeBookshelf());
+  btnImport.addEventListener('click', () => handleImportCache());
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeBookshelf();
   });
@@ -187,6 +190,25 @@ async function handleReRegistration(book: BookRecord): Promise<void> {
       console.error('Re-registration failed:', err);
       alert(`再登録に失敗しました: ${err?.message ?? err}`);
     }
+  }
+}
+
+async function handleImportCache(): Promise<void> {
+  try {
+    const res = await fetch('/api/books/import-local', { method: 'POST' });
+    if (res.ok) {
+      const result = await res.json() as { imported: { translations: number; books: number } };
+      alert(`インポート完了: 翻訳 ${result.imported.translations}件、本 ${result.imported.books}件`);
+      await renderBookshelf();
+    } else if (res.status === 400) {
+      alert('ローカルモードではインポートは不要です');
+    } else if (res.status === 404) {
+      alert('data/cache.db が見つかりません');
+    } else {
+      alert('インポートに失敗しました');
+    }
+  } catch {
+    alert('インポートに失敗しました');
   }
 }
 

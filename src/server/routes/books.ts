@@ -1,5 +1,8 @@
 import { Router } from 'express';
-import { getAllBooks, getBook, upsertBook, updateBook, deleteBook } from '../db';
+import path from 'path';
+import fs from 'fs';
+import Database from 'better-sqlite3';
+import { getAllBooks, getBook, upsertBook, updateBook, deleteBook, getDb, isTursoMode } from '../db';
 
 export const booksRouter = Router();
 
@@ -53,6 +56,74 @@ booksRouter.post('/', async (req, res) => {
   } catch (err) {
     console.error('[books] POST /api/books error:', err);
     res.status(500).json({ error: 'Failed to add book' });
+  }
+});
+
+// POST /api/books/import-local — import translations and books from local cache.db into Turso
+booksRouter.post('/import-local', async (_req, res) => {
+  try {
+    if (!isTursoMode()) {
+      res.status(400).json({ error: 'ローカルモードではインポートは不要です' });
+      return;
+    }
+
+    const cacheDbPath = path.join(process.cwd(), 'data', 'cache.db');
+    if (!fs.existsSync(cacheDbPath)) {
+      res.status(404).json({ error: 'data/cache.db が見つかりません' });
+      return;
+    }
+
+    const localDb = new Database(cacheDbPath, { readonly: true });
+    const client = getDb();
+
+    // Read all rows from local DB
+    const localTranslations = localDb.prepare('SELECT * FROM translations').all() as {
+      id: number;
+      pdf_hash: string;
+      page_num: number;
+      prompt_ver: string;
+      source_text: string;
+      translation: string;
+      created_at: number;
+    }[];
+
+    const localBooks = localDb.prepare('SELECT * FROM books').all() as {
+      pdf_hash: string;
+      title: string;
+      filename: string;
+      page_count: number | null;
+      added_at: number;
+      last_read_page: number;
+    }[];
+
+    localDb.close();
+
+    // Insert translations into Turso using INSERT OR IGNORE
+    let importedTranslations = 0;
+    for (const t of localTranslations) {
+      const result = await client.execute({
+        sql: `INSERT OR IGNORE INTO translations (pdf_hash, page_num, prompt_ver, source_text, translation, created_at)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [t.pdf_hash, t.page_num, t.prompt_ver, t.source_text, t.translation, t.created_at],
+      });
+      importedTranslations += result.rowsAffected;
+    }
+
+    // Insert books into Turso using INSERT OR IGNORE
+    let importedBooks = 0;
+    for (const b of localBooks) {
+      const result = await client.execute({
+        sql: `INSERT OR IGNORE INTO books (pdf_hash, title, filename, page_count, added_at, last_read_page)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [b.pdf_hash, b.title, b.filename, b.page_count, b.added_at, b.last_read_page],
+      });
+      importedBooks += result.rowsAffected;
+    }
+
+    res.json({ imported: { translations: importedTranslations, books: importedBooks } });
+  } catch (err) {
+    console.error('[books] POST /api/books/import-local error:', err);
+    res.status(500).json({ error: 'インポートに失敗しました' });
   }
 });
 

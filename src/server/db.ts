@@ -204,6 +204,10 @@ export async function saveTranslation(
   });
 }
 
+export function isTursoMode(): boolean {
+  return !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN);
+}
+
 export async function getAllTranslationsForPdf(pdfHash: string): Promise<CachedTranslation[]> {
   const client = getDb();
   const result = await client.execute({
