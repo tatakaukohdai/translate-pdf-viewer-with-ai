@@ -48,8 +48,8 @@ booksRouter.post('/', async (req, res) => {
       resolvedPageCount = pageCount as number;
     }
 
-    const book = await upsertBook(pdfHash, title.trim(), filename.trim(), resolvedPageCount);
-    res.status(201).json(book);
+    const { record, inserted } = await upsertBook(pdfHash, title.trim(), filename.trim(), resolvedPageCount);
+    res.status(inserted ? 201 : 200).json(record);
   } catch (err) {
     console.error('[books] POST /api/books error:', err);
     res.status(500).json({ error: 'Failed to add book' });

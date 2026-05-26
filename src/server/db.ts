@@ -115,14 +115,17 @@ export async function upsertBook(
   title: string,
   filename: string,
   pageCount: number | null
-): Promise<BookRecord> {
+): Promise<{ record: BookRecord; inserted: boolean }> {
   const client = getDb();
-  await client.execute({
+  const insertResult = await client.execute({
     sql: `INSERT OR IGNORE INTO books (pdf_hash, title, filename, page_count) VALUES (?, ?, ?, ?)`,
     args: [pdfHash, title, filename, pageCount],
   });
   const record = await getBook(pdfHash);
-  return record!;
+  if (!record) {
+    throw new Error(`upsertBook: record not found after INSERT for hash ${pdfHash}`);
+  }
+  return { record, inserted: insertResult.rowsAffected > 0 };
 }
 
 export async function updateBook(
