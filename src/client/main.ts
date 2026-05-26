@@ -91,9 +91,11 @@ const updateLastReadPage = debounce((hash: string, page: number) => {
 }, 500);
 
 async function openFromBookshelf(pdfHash: string, file: File): Promise<void> {
+  isTranslating = false;
+  setLoadingState(false);
   try {
     const buffer = await file.arrayBuffer();
-    currentPdfHash = pdfHash;
+    currentPdfHash = await computePdfHash(buffer);
     pdfDoc = await loadPdf(buffer);
     totalPages = pdfDoc.numPages;
     currentPage = 1;
