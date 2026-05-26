@@ -15,6 +15,15 @@ export interface CachedTranslation {
   created_at: number;
 }
 
+export interface BookRecord {
+  pdf_hash: string;
+  title: string;
+  filename: string;
+  page_count: number | null;
+  added_at: number;
+  last_read_page: number;
+}
+
 let _client: Client | null = null;
 
 export function getDb(): Client {
@@ -60,6 +69,98 @@ export async function initDb(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_translations_hash
       ON translations(pdf_hash, page_num)
   `);
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS books (
+      pdf_hash       TEXT PRIMARY KEY,
+      title          TEXT NOT NULL,
+      filename       TEXT NOT NULL,
+      page_count     INTEGER,
+      added_at       INTEGER NOT NULL DEFAULT (unixepoch()),
+      last_read_page INTEGER DEFAULT 1
+    )
+  `);
+}
+
+function rowToBookRecord(row: Record<string, unknown>): BookRecord {
+  return {
+    pdf_hash: row['pdf_hash'] as string,
+    title: row['title'] as string,
+    filename: row['filename'] as string,
+    page_count: row['page_count'] as number | null,
+    added_at: row['added_at'] as number,
+    last_read_page: row['last_read_page'] as number,
+  };
+}
+
+export async function getAllBooks(): Promise<BookRecord[]> {
+  const client = getDb();
+  const result = await client.execute(
+    'SELECT * FROM books ORDER BY added_at DESC'
+  );
+  return result.rows.map((row) => rowToBookRecord(row as Record<string, unknown>));
+}
+
+export async function getBook(pdfHash: string): Promise<BookRecord | undefined> {
+  const client = getDb();
+  const result = await client.execute({
+    sql: 'SELECT * FROM books WHERE pdf_hash = ?',
+    args: [pdfHash],
+  });
+  if (result.rows.length === 0) return undefined;
+  return rowToBookRecord(result.rows[0] as Record<string, unknown>);
+}
+
+export async function upsertBook(
+  pdfHash: string,
+  title: string,
+  filename: string,
+  pageCount: number | null
+): Promise<BookRecord> {
+  const client = getDb();
+  await client.execute({
+    sql: `INSERT OR IGNORE INTO books (pdf_hash, title, filename, page_count) VALUES (?, ?, ?, ?)`,
+    args: [pdfHash, title, filename, pageCount],
+  });
+  const record = await getBook(pdfHash);
+  return record!;
+}
+
+export async function updateBook(
+  pdfHash: string,
+  updates: { lastReadPage?: number; title?: string }
+): Promise<BookRecord | undefined> {
+  const client = getDb();
+  const setClauses: string[] = [];
+  const args: (string | number)[] = [];
+
+  if (updates.title !== undefined) {
+    setClauses.push('title = ?');
+    args.push(updates.title);
+  }
+  if (updates.lastReadPage !== undefined) {
+    setClauses.push('last_read_page = ?');
+    args.push(updates.lastReadPage);
+  }
+
+  if (setClauses.length === 0) {
+    return getBook(pdfHash);
+  }
+
+  args.push(pdfHash);
+  await client.execute({
+    sql: `UPDATE books SET ${setClauses.join(', ')} WHERE pdf_hash = ?`,
+    args,
+  });
+
+  return getBook(pdfHash);
+}
+
+export async function deleteBook(pdfHash: string): Promise<void> {
+  const client = getDb();
+  await client.execute({
+    sql: 'DELETE FROM books WHERE pdf_hash = ?',
+    args: [pdfHash],
+  });
 }
 
 export async function getCachedTranslation(

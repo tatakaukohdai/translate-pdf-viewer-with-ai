@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { translateRouter } from './routes/translate';
 import { notesRouter } from './routes/notes';
+import { booksRouter } from './routes/books';
 import { initDb } from './db';
 
 const app = express();
@@ -18,6 +19,7 @@ app.use(express.json({ limit: '2mb' }));
 
 app.use('/api/translate', translateRouter);
 app.use('/api/notes', notesRouter);
+app.use('/api/books', booksRouter);
 
 if (IS_PROD) {
   const clientDist = path.join(__dirname, '../../dist/client');
