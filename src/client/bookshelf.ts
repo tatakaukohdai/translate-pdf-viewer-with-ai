@@ -141,8 +141,8 @@ async function handleCardClick(
       const permission = await fileHandle.requestPermission({ mode: 'read' });
       if (permission === 'granted') {
         const file = await fileHandle.getFile();
-        closeBookshelf();
         await onOpenCallback!(book.pdf_hash, file);
+        closeBookshelf();
         return;
       }
     } catch {
@@ -173,8 +173,8 @@ async function handleReRegistration(book: BookRecord): Promise<void> {
     }
 
     await saveFileHandle(book.pdf_hash, handle);
-    closeBookshelf();
     await onOpenCallback!(book.pdf_hash, file);
+    closeBookshelf();
   } catch (err: any) {
     if (err?.name !== 'AbortError') {
       console.error('Re-registration failed:', err);
