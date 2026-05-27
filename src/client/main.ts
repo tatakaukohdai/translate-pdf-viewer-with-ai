@@ -2,12 +2,14 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { computePdfHash, loadPdf, renderPageToCanvas, getPageTextWithContext } from './pdfViewer';
 import { requestTranslation, renderMarkdown, exportNotes, checkCachedTranslation } from './translator';
 import { initBookshelf } from './bookshelf';
+import { startBatchTranslation, BatchTranslator } from './batchTranslator';
 
 let pdfDoc: PDFDocumentProxy | null = null;
 let currentPdfHash = '';
 let currentPage = 1;
 let totalPages = 0;
 let isTranslating = false;
+let batchTranslator: BatchTranslator | null = null;
 
 const pdfInput         = document.getElementById('pdf-input') as HTMLInputElement;
 const btnPrev          = document.getElementById('btn-prev') as HTMLButtonElement;
@@ -20,6 +22,12 @@ const pdfCanvas        = document.getElementById('pdf-canvas') as HTMLCanvasElem
 const translationContent  = document.getElementById('translation-content') as HTMLDivElement;
 const translationLoading  = document.getElementById('translation-loading') as HTMLDivElement;
 const pdfPane          = document.getElementById('pdf-pane') as HTMLElement;
+const btnBatch         = document.getElementById('btn-batch') as HTMLButtonElement;
+const batchCountInput  = document.getElementById('batch-count') as HTMLInputElement;
+const batchProgress    = document.getElementById('batch-progress') as HTMLDivElement;
+const batchProgressText = document.getElementById('batch-progress-text') as HTMLSpanElement;
+const batchProgressFill = document.getElementById('batch-progress-fill') as HTMLDivElement;
+const btnBatchCancel   = document.getElementById('btn-batch-cancel') as HTMLButtonElement;
 
 pdfInput.addEventListener('change', async (e) => {
   const file = (e.target as HTMLInputElement).files?.[0];
@@ -32,6 +40,7 @@ pdfInput.addEventListener('change', async (e) => {
     totalPages = pdfDoc.numPages;
     currentPage = 1;
     btnExport.disabled = false;
+    btnBatch.disabled = false;
     clearTranslation();
     await goToPage(1);
   } catch (err) {
@@ -49,6 +58,14 @@ btnNext.addEventListener('click', () => {
 
 btnTranslate.addEventListener('click', () => {
   translateCurrentPage();
+});
+
+btnBatch.addEventListener('click', () => {
+  startBatch();
+});
+
+btnBatchCancel.addEventListener('click', () => {
+  batchTranslator?.cancel();
 });
 
 btnExport.addEventListener('click', async () => {
@@ -71,6 +88,12 @@ document.addEventListener('keydown', (e) => {
     if (currentPage < totalPages) goToPage(currentPage + 1);
   } else if (e.key === 't' || e.key === 'T') {
     translateCurrentPage();
+  } else if (e.key === 'b' || e.key === 'B') {
+    if (batchTranslator?.isRunning) {
+      batchTranslator.cancel();
+    } else {
+      startBatch();
+    }
   }
 });
 
@@ -93,6 +116,8 @@ const updateLastReadPage = debounce((hash: string, page: number) => {
 async function openFromBookshelf(_pdfHash: string, file: File): Promise<void> {
   isTranslating = false;
   setLoadingState(false);
+  batchTranslator?.cancel();
+  setBatchRunning(false);
   try {
     const buffer = await file.arrayBuffer();
     currentPdfHash = await computePdfHash(buffer);
@@ -100,6 +125,7 @@ async function openFromBookshelf(_pdfHash: string, file: File): Promise<void> {
     totalPages = pdfDoc.numPages;
     currentPage = 1;
     btnExport.disabled = false;
+    btnBatch.disabled = false;
     clearTranslation();
     await goToPage(1);
   } catch (err) {
@@ -156,6 +182,51 @@ async function translateCurrentPage(): Promise<void> {
   } finally {
     isTranslating = false;
     setLoadingState(false);
+  }
+}
+
+async function startBatch(): Promise<void> {
+  if (!pdfDoc || !currentPdfHash) return;
+  if (batchTranslator?.isRunning) return;
+
+  const countVal = batchCountInput.value.trim();
+  const pageCount = countVal ? parseInt(countVal, 10) : null;
+  const endPage = pageCount ? Math.min(currentPage + pageCount - 1, totalPages) : totalPages;
+
+  setBatchRunning(true);
+  batchTranslator = await startBatchTranslation({
+    pdfDoc,
+    pdfHash: currentPdfHash,
+    startPage: currentPage,
+    endPage,
+    concurrency: 2,
+    onProgress(done, total) {
+      batchProgressText.textContent = `${done}/${total}`;
+      batchProgressFill.style.width = total > 0 ? `${Math.round((done / total) * 100)}%` : '0%';
+    },
+    onPageDone(pageNum) {
+      if (pageNum === currentPage) {
+        loadCachedTranslation();
+      }
+    },
+    onFinish(_cancelled) {
+      setBatchRunning(false);
+    },
+  });
+}
+
+function setBatchRunning(running: boolean): void {
+  if (running) {
+    batchProgress.hidden = false;
+    btnBatch.disabled = true;
+    btnTranslate.disabled = true;
+    batchProgressText.textContent = '0/0';
+    batchProgressFill.style.width = '0%';
+  } else {
+    batchProgress.hidden = true;
+    btnBatch.disabled = !pdfDoc;
+    btnTranslate.disabled = false;
+    batchTranslator = null;
   }
 }
 

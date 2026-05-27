@@ -103,6 +103,61 @@ button:disabled {
   border: 1px solid var(--color-fresh);
 }
 
+/* Batch translation controls */
+#batch-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#batch-count {
+  width: 72px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #313244;
+  color: var(--text-toolbar);
+  font-size: 0.82rem;
+}
+
+#batch-count::placeholder {
+  color: #6c7086;
+}
+
+#batch-count::-webkit-inner-spin-button,
+#batch-count::-webkit-outer-spin-button {
+  opacity: 0.5;
+}
+
+#batch-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#batch-progress-text {
+  font-size: 0.82rem;
+  white-space: nowrap;
+  min-width: 48px;
+  text-align: right;
+}
+
+#batch-progress-bar {
+  width: 100px;
+  height: 6px;
+  background: #45475a;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+#batch-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--color-fresh);
+  border-radius: 3px;
+  transition: width 0.2s;
+}
+
 /* Two-pane layout */
 #panes {
   flex: 1;

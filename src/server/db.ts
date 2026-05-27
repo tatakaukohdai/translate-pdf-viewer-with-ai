@@ -208,6 +208,15 @@ export function isTursoMode(): boolean {
   return !!(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN);
 }
 
+export async function getTranslatedPageNums(pdfHash: string, promptVer: string): Promise<number[]> {
+  const client = getDb();
+  const result = await client.execute({
+    sql: 'SELECT page_num FROM translations WHERE pdf_hash = ? AND prompt_ver = ? ORDER BY page_num',
+    args: [pdfHash, promptVer],
+  });
+  return result.rows.map((row) => row['page_num'] as number);
+}
+
 export async function getAllTranslationsForPdf(pdfHash: string): Promise<CachedTranslation[]> {
   const client = getDb();
   const result = await client.execute({

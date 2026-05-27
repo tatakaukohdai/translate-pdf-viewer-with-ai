@@ -1,0 +1,26 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]: "PDF を開く:"
+    - button "PDF を開く:" [ref=e5]
+    - generic [ref=e6]:
+      - button "‹" [disabled] [ref=e7]
+      - generic [ref=e8]: "-/-"
+      - button "›" [disabled] [ref=e9]
+    - button "翻訳" [ref=e10] [cursor=pointer]
+    - button "ノートを保存" [disabled] [ref=e11]
+    - button "本棚" [active] [ref=e13] [cursor=pointer]
+  - main [ref=e14]:
+    - paragraph [ref=e19]: PDFを開いて翻訳ボタンを押してください
+  - dialog [ref=e22]:
+    - generic [ref=e23]:
+      - generic [ref=e24]: 本棚
+      - generic [ref=e25]:
+        - button "＋ 追加" [ref=e26] [cursor=pointer]
+        - button "✕" [ref=e27] [cursor=pointer]
+    - generic [ref=e29] [cursor=pointer]:
+      - generic [ref=e31]: 📄
+      - generic [ref=e32]:
+        - generic "kindle_20260525_213135" [ref=e33]
+        - generic [ref=e34]: 5 / 105 ページ
+        - generic [ref=e35]: 再登録が必要
+    - button "cache.dbをインポート" [ref=e37] [cursor=pointer]

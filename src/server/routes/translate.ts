@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getCachedTranslation, saveTranslation } from '../db';
+import { getCachedTranslation, saveTranslation, getTranslatedPageNums } from '../db';
 import { translatePage, PROMPT_VERSION } from '../services/claude';
 import { normalizeText } from '../services/textClean';
 
@@ -16,6 +16,21 @@ interface TranslateRequestBody {
 function isValidPdfHash(hash: unknown): hash is string {
   return typeof hash === 'string' && /^[0-9a-f]{64}$/.test(hash);
 }
+
+translateRouter.get('/:pdfHash/pages', async (req: Request, res: Response) => {
+  const { pdfHash } = req.params;
+  if (!isValidPdfHash(pdfHash)) {
+    res.status(400).json({ error: 'Invalid pdfHash' });
+    return;
+  }
+  try {
+    const translatedPages = await getTranslatedPageNums(pdfHash, PROMPT_VERSION);
+    res.json({ translatedPages });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: 'Database error', detail: message });
+  }
+});
 
 translateRouter.get('/:pdfHash/:pageNum', async (req: Request, res: Response) => {
   const { pdfHash, pageNum: pageNumStr } = req.params;

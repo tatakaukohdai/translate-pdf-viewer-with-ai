@@ -19,6 +19,15 @@
       </div>
 
       <button id="btn-translate" title="選択中のページを翻訳 (T)">翻訳</button>
+      <div id="batch-controls">
+        <button id="btn-batch" disabled title="現在のページ以降を連続翻訳 (B)">連続翻訳</button>
+        <input type="number" id="batch-count" min="1" placeholder="全ページ" title="翻訳するページ数（空欄で全ページ）" />
+      </div>
+      <div id="batch-progress" hidden>
+        <span id="batch-progress-text">0/0</span>
+        <div id="batch-progress-bar"><div id="batch-progress-fill"></div></div>
+        <button id="btn-batch-cancel" title="連続翻訳を中止">中止</button>
+      </div>
       <button id="btn-export" disabled title="全翻訳をMarkdownで保存">ノートを保存</button>
       <span id="cache-badge"></span>
       <button id="btn-bookshelf" title="本棚を開く">本棚</button>
