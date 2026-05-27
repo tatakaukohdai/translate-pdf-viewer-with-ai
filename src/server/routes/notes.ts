@@ -7,7 +7,7 @@ function isValidPdfHash(hash: unknown): hash is string {
   return typeof hash === 'string' && /^[0-9a-f]{64}$/.test(hash);
 }
 
-notesRouter.get('/export/:pdfHash', (req: Request, res: Response) => {
+notesRouter.get('/export/:pdfHash', async (req: Request, res: Response) => {
   const { pdfHash } = req.params;
 
   if (!isValidPdfHash(pdfHash)) {
@@ -15,7 +15,14 @@ notesRouter.get('/export/:pdfHash', (req: Request, res: Response) => {
     return;
   }
 
-  const translations = getAllTranslationsForPdf(pdfHash);
+  let translations;
+  try {
+    translations = await getAllTranslationsForPdf(pdfHash);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: 'Database error', detail: message });
+    return;
+  }
 
   if (translations.length === 0) {
     res.status(404).json({ error: 'No translations found for this PDF' });

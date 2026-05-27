@@ -21,6 +21,7 @@
       <button id="btn-translate" title="選択中のページを翻訳 (T)">翻訳</button>
       <button id="btn-export" disabled title="全翻訳をMarkdownで保存">ノートを保存</button>
       <span id="cache-badge"></span>
+      <button id="btn-bookshelf" title="本棚を開く">本棚</button>
     </header>
 
     <main id="panes">
@@ -35,6 +36,22 @@
         </div>
       </section>
     </main>
+    <div id="bookshelf-modal" hidden>
+      <div id="bookshelf-overlay"></div>
+      <div id="bookshelf-panel" role="dialog" aria-modal="true">
+        <div id="bookshelf-header">
+          <span>本棚</span>
+          <div id="bookshelf-actions">
+            <button id="btn-add-book">＋ 追加</button>
+            <button id="btn-close-bookshelf">✕</button>
+          </div>
+        </div>
+        <div id="bookshelf-grid"></div>
+        <div id="bookshelf-footer">
+          <button id="btn-import-cache">cache.dbをインポート</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="./main.ts"></script>

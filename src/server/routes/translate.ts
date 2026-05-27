@@ -17,7 +17,7 @@ function isValidPdfHash(hash: unknown): hash is string {
   return typeof hash === 'string' && /^[0-9a-f]{64}$/.test(hash);
 }
 
-translateRouter.get('/:pdfHash/:pageNum', (req: Request, res: Response) => {
+translateRouter.get('/:pdfHash/:pageNum', async (req: Request, res: Response) => {
   const { pdfHash, pageNum: pageNumStr } = req.params;
   if (!isValidPdfHash(pdfHash)) {
     res.status(400).json({ error: 'Invalid pdfHash' });
@@ -28,11 +28,16 @@ translateRouter.get('/:pdfHash/:pageNum', (req: Request, res: Response) => {
     res.status(400).json({ error: 'Invalid pageNum' });
     return;
   }
-  const cached = getCachedTranslation(pdfHash, pageNum, PROMPT_VERSION);
-  if (cached) {
-    res.json({ hit: true, translation: cached.translation, pageNum });
-  } else {
-    res.json({ hit: false });
+  try {
+    const cached = await getCachedTranslation(pdfHash, pageNum, PROMPT_VERSION);
+    if (cached) {
+      res.json({ hit: true, translation: cached.translation, pageNum });
+    } else {
+      res.json({ hit: false });
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: 'Database error', detail: message });
   }
 });
 
@@ -54,9 +59,15 @@ translateRouter.post('/', async (req: Request, res: Response) => {
 
   const { pdfHash, pageNum, pageText, contextBefore = '', contextAfter = '' } = body as TranslateRequestBody;
 
-  const cached = getCachedTranslation(pdfHash, pageNum, PROMPT_VERSION);
-  if (cached) {
-    res.json({ translation: cached.translation, fromCache: true, pageNum });
+  try {
+    const cached = await getCachedTranslation(pdfHash, pageNum, PROMPT_VERSION);
+    if (cached) {
+      res.json({ translation: cached.translation, fromCache: true, pageNum });
+      return;
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: 'Database error', detail: message });
     return;
   }
 
@@ -72,7 +83,7 @@ translateRouter.post('/', async (req: Request, res: Response) => {
       pageNum,
     });
 
-    saveTranslation(pdfHash, pageNum, PROMPT_VERSION, cleanedText, result.translation);
+    await saveTranslation(pdfHash, pageNum, PROMPT_VERSION, cleanedText, result.translation);
 
     res.json({ translation: result.translation, fromCache: false, pageNum });
   } catch (err) {

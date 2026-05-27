@@ -4,7 +4,8 @@ import cors from 'cors';
 import path from 'path';
 import { translateRouter } from './routes/translate';
 import { notesRouter } from './routes/notes';
-import { getDb } from './db';
+import { booksRouter } from './routes/books';
+import { initDb } from './db';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -18,6 +19,7 @@ app.use(express.json({ limit: '2mb' }));
 
 app.use('/api/translate', translateRouter);
 app.use('/api/notes', notesRouter);
+app.use('/api/books', booksRouter);
 
 if (IS_PROD) {
   const clientDist = path.join(__dirname, '../../dist/client');
@@ -27,11 +29,13 @@ if (IS_PROD) {
   });
 }
 
-getDb();
+(async () => {
+  await initDb();
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-  if (!IS_PROD) {
-    console.log('Development mode: frontend served by Vite at http://localhost:5173');
-  }
-});
+  app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+    if (!IS_PROD) {
+      console.log('Development mode: frontend served by Vite at http://localhost:5173');
+    }
+  });
+})();
