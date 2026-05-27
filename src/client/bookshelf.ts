@@ -17,6 +17,10 @@ export function initBookshelf(
 ): void {
   onOpenCallback = onOpen;
 
+  // 初期状態で確実に非表示にする（CSSの[hidden]が効かない場合の保険）
+  const modal = document.getElementById('bookshelf-modal')!;
+  modal.style.display = 'none';
+
   const btnBookshelf = document.getElementById('btn-bookshelf')!;
   const btnAddBook = document.getElementById('btn-add-book')!;
   const btnClose = document.getElementById('btn-close-bookshelf')!;
@@ -37,12 +41,14 @@ export function initBookshelf(
 export function openBookshelf(): void {
   const modal = document.getElementById('bookshelf-modal')!;
   modal.removeAttribute('hidden');
+  modal.style.display = '';
   renderBookshelf();
 }
 
 export function closeBookshelf(): void {
   const modal = document.getElementById('bookshelf-modal')!;
   modal.setAttribute('hidden', '');
+  modal.style.display = 'none'; // [hidden]が効かないブラウザ向けの保険
 }
 
 async function renderBookshelf(): Promise<void> {
@@ -146,16 +152,15 @@ async function handleCardClick(
 ): Promise<void> {
   if (fileHandle) {
     try {
-      const permission = await fileHandle.requestPermission({ mode: 'read' });
-      if (permission === 'granted') {
-        const file = await fileHandle.getFile();
-        if (!onOpenCallback) return;
-        await onOpenCallback(book.pdf_hash, file);
-        closeBookshelf();
-        return;
-      }
+      // getFile() はユーザージェスチャーを消費しない。
+      // requestPermission() は消費するため、その後の showOpenFilePicker が失敗する。
+      const file = await fileHandle.getFile();
+      if (!onOpenCallback) return;
+      await onOpenCallback(book.pdf_hash, file);
+      closeBookshelf();
+      return;
     } catch {
-      // Permission denied or error — fall through to re-registration
+      // NotAllowedError（権限未付与）またはファイル移動など → 再登録フローへ
     }
   }
 
@@ -164,9 +169,8 @@ async function handleCardClick(
 }
 
 async function handleReRegistration(book: BookRecord): Promise<void> {
-  const confirmed = confirm(`「${book.title}」のファイルが見つかりません。再登録しますか？`);
-  if (!confirmed) return;
-
+  // confirm() はユーザージェスチャーを消費するため削除。
+  // confirm() 後に showOpenFilePicker() を呼ぶと AbortError になりサイレントに失敗する。
   try {
     const [handle] = await (window as any).showOpenFilePicker({
       types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
