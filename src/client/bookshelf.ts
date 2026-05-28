@@ -12,6 +12,39 @@ interface BookRecord {
 
 let onOpenCallback: ((pdfHash: string, file: File) => Promise<void>) | null = null;
 
+// File System Access API は Chrome/Edge のみ対応。Firefox はフォールバックを使う。
+const hasFileSystemAccess = 'showOpenFilePicker' in window;
+
+interface PickedFile {
+  file: File;
+  handle: FileSystemFileHandle | null;
+}
+
+async function pickPdfFile(): Promise<PickedFile | null> {
+  if (hasFileSystemAccess) {
+    try {
+      const [handle] = await (window as any).showOpenFilePicker({
+        types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
+      }) as [FileSystemFileHandle];
+      const file = await handle.getFile();
+      return { file, handle };
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return null;
+      throw err;
+    }
+  }
+
+  // Firefox / Safari fallback: 隠し input[type=file] を使う
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf';
+    input.onchange = () => resolve(input.files?.[0] ? { file: input.files[0], handle: null } : null);
+    input.oncancel = () => resolve(null);
+    input.click();
+  });
+}
+
 export function initBookshelf(
   onOpen: (pdfHash: string, file: File) => Promise<void>
 ): void {
@@ -169,14 +202,11 @@ async function handleCardClick(
 }
 
 async function handleReRegistration(book: BookRecord): Promise<void> {
-  // confirm() はユーザージェスチャーを消費するため削除。
-  // confirm() 後に showOpenFilePicker() を呼ぶと AbortError になりサイレントに失敗する。
   try {
-    const [handle] = await (window as any).showOpenFilePicker({
-      types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
-    }) as [FileSystemFileHandle];
+    const picked = await pickPdfFile();
+    if (!picked) return;
 
-    const file = await handle.getFile();
+    const { file, handle } = picked;
     const buffer = await file.arrayBuffer();
     const hash = await computePdfHash(buffer);
 
@@ -185,7 +215,7 @@ async function handleReRegistration(book: BookRecord): Promise<void> {
       return;
     }
 
-    await saveFileHandle(book.pdf_hash, handle);
+    if (handle) await saveFileHandle(book.pdf_hash, handle);
     if (!onOpenCallback) return;
     await onOpenCallback(book.pdf_hash, file);
     closeBookshelf();
@@ -218,11 +248,10 @@ async function handleImportCache(): Promise<void> {
 
 async function handleAddBook(): Promise<void> {
   try {
-    const [handle] = await (window as any).showOpenFilePicker({
-      types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
-    }) as [FileSystemFileHandle];
+    const picked = await pickPdfFile();
+    if (!picked) return;
 
-    const file = await handle.getFile();
+    const { file, handle } = picked;
     const buffer = await file.arrayBuffer();
     const hash = await computePdfHash(buffer);
 
@@ -239,8 +268,8 @@ async function handleAddBook(): Promise<void> {
       }, 'image/jpeg', 0.8);
     });
 
-    // Save file handle locally
-    await saveFileHandle(hash, handle);
+    // Save file handle locally (Chrome only; null on Firefox)
+    if (handle) await saveFileHandle(hash, handle);
 
     // Derive title from filename (strip .pdf extension)
     const title = file.name.replace(/\.pdf$/i, '');
