@@ -3,3 +3,8 @@ dist/
 data/
 .env
 *.db
+.DS_Store
+*:Zone.Identifier
+.claude/settings.local.json
+.claude/worktrees/
+.playwright-mcp/
